@@ -1,3 +1,5 @@
+import { NavLink } from "react-router-dom";
+
 function Sidebar() {
   return (
     <aside className="sidebar">
@@ -7,16 +9,76 @@ function Sidebar() {
       </div>
 
       <nav className="sidebar-menu">
-        <button className="menu-item active">▦ Dashboard</button>
-        <button className="menu-item">👥 Παίκτες</button>
-        <button className="menu-item">📋 Προπονήσεις</button>
-        <button className="menu-item">🏆 Αγώνες</button>
-        <button className="menu-item">🤕 Τραυματισμοί</button>
-        <button className="menu-item">📅 Ημερολόγιο</button>
-        <button className="menu-item">📊 Αναλύσεις</button>
+
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          ▦ Dashboard
+        </NavLink>
+
+        <NavLink
+          to="/players"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          👥 Παίκτες
+        </NavLink>
+
+        <NavLink
+          to="/trainings"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          📋 Προπονήσεις
+        </NavLink>
+
+        <NavLink
+          to="/matches"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          🏆 Αγώνες
+        </NavLink>
+
+        <NavLink
+          to="/injuries"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          🤕 Τραυματισμοί
+        </NavLink>
+
+        <NavLink
+          to="/calendar"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          📅 Ημερολόγιο
+        </NavLink>
+
+        <NavLink
+          to="/analytics"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          📊 Αναλύσεις
+        </NavLink>
+
       </nav>
 
-      <button className="menu-item settings">⚙️ Ρυθμίσεις</button>
+      <button className="menu-item settings">
+        ⚙️ Ρυθμίσεις
+      </button>
     </aside>
   );
 }
