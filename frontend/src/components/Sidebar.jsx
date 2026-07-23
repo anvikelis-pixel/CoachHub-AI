@@ -39,6 +39,15 @@ function Sidebar() {
         </NavLink>
 
         <NavLink
+          to="/exercises"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          📚 Exercise Library
+        </NavLink>
+
+        <NavLink
           to="/matches"
           className={({ isActive }) =>
             isActive ? "menu-item active" : "menu-item"
