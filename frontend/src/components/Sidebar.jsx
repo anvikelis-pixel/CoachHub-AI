@@ -44,7 +44,16 @@ function Sidebar() {
             isActive ? "menu-item active" : "menu-item"
           }
         >
-          📚 Exercise Library
+          🏃 Βιβλιοθήκη Ασκήσεων
+        </NavLink>
+
+        <NavLink
+          to="/opponents"
+          className={({ isActive }) =>
+            isActive ? "menu-item active" : "menu-item"
+          }
+        >
+          🎯 Αντίπαλοι
         </NavLink>
 
         <NavLink
