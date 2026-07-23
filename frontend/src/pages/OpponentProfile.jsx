@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import KeyPlayersScouting from "../components/opponents/KeyPlayersScouting";
 import OpponentTabs from "../components/opponents/OpponentTabs";
+import OpponentVideoSection from "../components/opponents/OpponentVideoSection";
+import TacticalLineup from "../components/opponents/TacticalLineup";
+import VideoUploadModal from "../components/opponents/VideoUploadModal";
 
 const fallbackOpponents = [
   {
@@ -169,80 +173,171 @@ const fallbackOpponents = [
   },
 ];
 
-function OpponentProfile() {
-  const { opponentId } = useParams();
-  const [activeTab, setActiveTab] = useState("overview");
-
-  let opponents = fallbackOpponents;
-
+function loadOpponents() {
   try {
     const savedOpponents = localStorage.getItem(
       "coachhub-opponents"
     );
 
-    if (savedOpponents) {
-      const parsedOpponents = JSON.parse(savedOpponents);
-
-      if (Array.isArray(parsedOpponents)) {
-        opponents = parsedOpponents.map((opponent) => {
-          const fallbackOpponent =
-            fallbackOpponents.find(
-              (item) =>
-                String(item.id) ===
-                String(opponent.id)
-            );
-
-          return {
-            ...fallbackOpponent,
-            ...opponent,
-            likelyLineup:
-              opponent.likelyLineup ||
-              fallbackOpponent?.likelyLineup ||
-              [],
-            keyPlayers:
-              opponent.keyPlayers ||
-              fallbackOpponent?.keyPlayers ||
-              [],
-            videos:
-              opponent.videos ||
-              fallbackOpponent?.videos ||
-              [],
-          };
-        });
-      }
+    if (!savedOpponents) {
+      return fallbackOpponents;
     }
+
+    const parsedOpponents = JSON.parse(savedOpponents);
+
+    if (!Array.isArray(parsedOpponents)) {
+      return fallbackOpponents;
+    }
+
+    return parsedOpponents.map((opponent) => {
+      const fallbackOpponent =
+        fallbackOpponents.find(
+          (item) =>
+            String(item.id) ===
+            String(opponent.id)
+        );
+
+      return {
+        ...fallbackOpponent,
+        ...opponent,
+        strengths:
+          opponent.strengths ||
+          fallbackOpponent?.strengths ||
+          [],
+        weaknesses:
+          opponent.weaknesses ||
+          fallbackOpponent?.weaknesses ||
+          [],
+        likelyLineup:
+          opponent.likelyLineup ||
+          fallbackOpponent?.likelyLineup ||
+          [],
+        keyPlayers:
+          opponent.keyPlayers ||
+          fallbackOpponent?.keyPlayers ||
+          [],
+        videos:
+          opponent.videos ||
+          fallbackOpponent?.videos ||
+          [],
+      };
+    });
   } catch (error) {
     console.error(
-      "Αποτυχία φόρτωσης ανάλυσης αντιπάλου:",
+      "Αποτυχία φόρτωσης αντιπάλων:",
       error
     );
-  }
 
-  const opponent = opponents.find(
-    (currentOpponent) =>
-      String(currentOpponent.id) ===
-      String(opponentId)
+    return fallbackOpponents;
+  }
+}
+
+function OpponentProfile() {
+  const { opponentId } = useParams();
+
+  const [activeTab, setActiveTab] =
+    useState("overview");
+
+  const [
+    isVideoModalOpen,
+    setIsVideoModalOpen,
+  ] = useState(false);
+
+  const [opponents, setOpponents] =
+    useState(loadOpponents);
+
+  const opponent = useMemo(
+    () =>
+      opponents.find(
+        (currentOpponent) =>
+          String(currentOpponent.id) ===
+          String(opponentId)
+      ),
+    [opponents, opponentId]
   );
 
-  if (!opponent) {
-    return (
-      <div className="opponent-profile-page">
-        <section className="opponent-profile-not-found">
-          <p className="section-eyebrow dark">
-            OPPONENT PROFILE
-          </p>
+  const videos = useMemo(
+    () =>
+      Array.isArray(opponent?.videos)
+        ? opponent.videos
+        : [],
+    [opponent]
+  );
 
-          <h1>Ο αντίπαλος δεν βρέθηκε.</h1>
+  function saveOpponents(updatedOpponents) {
+    setOpponents(updatedOpponents);
 
-          <Link
-            to="/opponents"
-            className="opponent-profile-back-link"
-          >
-            ← Επιστροφή στους αντιπάλους
-          </Link>
-        </section>
-      </div>
+    try {
+      localStorage.setItem(
+        "coachhub-opponents",
+        JSON.stringify(updatedOpponents)
+      );
+    } catch (error) {
+      console.error(
+        "Αποτυχία αποθήκευσης αντιπάλων:",
+        error
+      );
+    }
+  }
+
+  function addOpponentVideo(newVideo) {
+    if (!opponent) {
+      return;
+    }
+
+    const updatedVideos = [
+      newVideo,
+      ...videos,
+    ];
+
+    const updatedOpponents = opponents.map(
+      (currentOpponent) =>
+        String(currentOpponent.id) ===
+        String(opponent.id)
+          ? {
+              ...currentOpponent,
+              videos: updatedVideos,
+            }
+          : currentOpponent
     );
+
+    saveOpponents(updatedOpponents);
+    setIsVideoModalOpen(false);
+  }
+
+  function deleteOpponentVideo(videoId) {
+    const videoToDelete = videos.find(
+      (video) => video.id === videoId
+    );
+
+    if (!videoToDelete || !opponent) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Θέλεις να διαγράψεις το βίντεο «${videoToDelete.title}»;`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const updatedVideos = videos.filter(
+      (video) => video.id !== videoId
+    );
+
+    const updatedOpponents = opponents.map(
+      (currentOpponent) =>
+        String(currentOpponent.id) ===
+        String(opponent.id)
+          ? {
+              ...currentOpponent,
+              videos: updatedVideos,
+            }
+          : currentOpponent
+    );
+
+    saveOpponents(updatedOpponents);
   }
 
   function formatDate(date) {
@@ -263,6 +358,33 @@ function OpponentProfile() {
       month: "long",
       year: "numeric",
     }).format(parsedDate);
+  }
+
+  if (!opponent) {
+    return (
+      <div className="opponent-profile-page">
+        <section className="opponent-profile-not-found">
+          <p className="section-eyebrow dark">
+            OPPONENT PROFILE
+          </p>
+
+          <h1>Ο αντίπαλος δεν βρέθηκε.</h1>
+
+          <p>
+            Η συγκεκριμένη ανάλυση μπορεί να έχει
+            διαγραφεί ή να μην έχει αποθηκευτεί
+            σωστά.
+          </p>
+
+          <Link
+            to="/opponents"
+            className="opponent-profile-back-link"
+          >
+            ← Επιστροφή στους αντιπάλους
+          </Link>
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -314,7 +436,10 @@ function OpponentProfile() {
 
           <div className="opponent-profile-score">
             <span>THREAT LEVEL</span>
-            <strong>{opponent.strengthLevel}%</strong>
+
+            <strong>
+              {opponent.strengthLevel}%
+            </strong>
           </div>
         </div>
       </section>
@@ -322,7 +447,7 @@ function OpponentProfile() {
       <OpponentTabs
         activeTab={activeTab}
         onChange={setActiveTab}
-        videoCount={opponent.videos?.length || 0}
+        videoCount={videos.length}
       />
 
       <section className="opponent-profile-content refined">
@@ -343,27 +468,33 @@ function OpponentProfile() {
                 <div className="opponent-overview-cards">
                   <article>
                     <span>ΣΧΗΜΑΤΙΣΜΟΣ</span>
+
                     <strong>
                       {opponent.formation}
                     </strong>
+
                     <p>Πιθανή αρχική διάταξη</p>
                   </article>
 
                   <article>
                     <span>ΑΓΩΝΑΣ</span>
+
                     <strong>
                       {formatDate(
                         opponent.nextMatchDate
                       )}
                     </strong>
+
                     <p>{opponent.venue}</p>
                   </article>
 
                   <article>
                     <span>ΑΠΕΙΛΗ</span>
+
                     <strong>
                       {opponent.strengthLevel}%
                     </strong>
+
                     <p>Εκτιμώμενη δυναμικότητα</p>
                   </article>
                 </div>
@@ -431,59 +562,12 @@ function OpponentProfile() {
         )}
 
         {activeTab === "lineup" && (
-          <section className="opponent-profile-section">
-            <header className="opponent-section-header">
-              <div>
-                <p className="section-eyebrow dark">
-                  LIKELY LINEUP
-                </p>
-
-                <h2>Πιθανή ενδεκάδα</h2>
-              </div>
-
-              <span>{opponent.formation}</span>
-            </header>
-
-            <div className="opponent-lineup-layout">
-              <div className="opponent-tactical-pitch">
-                {(opponent.likelyLineup || []).map(
-                  (player) => (
-                    <article
-                      className="opponent-lineup-player"
-                      key={player.id}
-                      style={{
-                        left: `${player.x}%`,
-                        top: `${player.y}%`,
-                      }}
-                    >
-                      <strong>{player.number}</strong>
-                      <span>{player.name}</span>
-                      <small>{player.role}</small>
-                    </article>
-                  )
-                )}
-              </div>
-
-              <div className="opponent-lineup-list">
-                {(opponent.likelyLineup || []).map(
-                  (player) => (
-                    <article key={player.id}>
-                      <strong>
-                        #{player.number}
-                      </strong>
-
-                      <div>
-                        <h3>{player.name}</h3>
-                        <p>{player.position}</p>
-                      </div>
-
-                      <span>{player.role}</span>
-                    </article>
-                  )
-                )}
-              </div>
-            </div>
-          </section>
+          <TacticalLineup
+            players={
+              opponent.likelyLineup || []
+            }
+            formation={opponent.formation}
+          />
         )}
 
         {activeTab === "tactics" && (
@@ -501,31 +585,41 @@ function OpponentProfile() {
             <div className="opponent-behaviour-grid">
               <article>
                 <span>BUILD UP</span>
+
                 <h3>Ανάπτυξη παιχνιδιού</h3>
+
                 <p>{opponent.buildUp}</p>
               </article>
 
               <article>
                 <span>PRESSING</span>
+
                 <h3>Τρόπος πίεσης</h3>
+
                 <p>{opponent.pressing}</p>
               </article>
 
               <article>
                 <span>DEFENSIVE SHAPE</span>
+
                 <h3>Αμυντική οργάνωση</h3>
+
                 <p>{opponent.defensiveShape}</p>
               </article>
 
               <article>
                 <span>TRANSITION</span>
+
                 <h3>Μεταβάσεις</h3>
+
                 <p>{opponent.transition}</p>
               </article>
 
               <article>
                 <span>SET PIECES</span>
+
                 <h3>Στατικές φάσεις</h3>
+
                 <p>{opponent.setPieces}</p>
               </article>
             </div>
@@ -533,75 +627,23 @@ function OpponentProfile() {
         )}
 
         {activeTab === "players" && (
-          <section className="opponent-profile-section">
-            <header className="opponent-section-header">
-              <div>
-                <p className="section-eyebrow dark">
-                  KEY PLAYERS
-                </p>
-
-                <h2>Παίκτες-κλειδιά</h2>
-              </div>
-            </header>
-
-            <div className="opponent-key-players refined">
-              {(opponent.keyPlayers || []).map(
-                (player) => (
-                  <article key={player.id}>
-                    <div className="key-player-number">
-                      {player.number}
-                    </div>
-
-                    <div>
-                      <span>{player.position}</span>
-                      <h3>{player.name}</h3>
-                      <p>{player.description}</p>
-                    </div>
-
-                    <strong>
-                      {player.threat}%
-                    </strong>
-                  </article>
-                )
-              )}
-            </div>
-          </section>
+          <KeyPlayersScouting
+            players={
+              opponent.keyPlayers || []
+            }
+          />
         )}
 
         {activeTab === "videos" && (
-          <section className="opponent-profile-section">
-            <header className="opponent-section-header">
-              <div>
-                <p className="section-eyebrow dark">
-                  VIDEO ANALYSIS
-                </p>
-
-                <h2>Βίντεο αντιπάλου</h2>
-              </div>
-
-              <button
-                type="button"
-                className="premium-primary-button"
-                disabled
-              >
-                + Προσθήκη βίντεο — Επόμενο βήμα
-              </button>
-            </header>
-
-            <div className="opponent-empty-analysis">
-              <span>NO VIDEO ANALYSIS</span>
-
-              <h3>
-                Δεν έχουν προστεθεί βίντεο.
-              </h3>
-
-              <p>
-                Στο επόμενο βήμα θα προσθέσουμε
-                upload αρχείου και συνδέσμους
-                YouTube/Vimeo.
-              </p>
-            </div>
-          </section>
+          <OpponentVideoSection
+            videos={videos}
+            onAddVideo={() =>
+              setIsVideoModalOpen(true)
+            }
+            onDeleteVideo={
+              deleteOpponentVideo
+            }
+          />
         )}
 
         {activeTab === "ai" && (
@@ -621,6 +663,15 @@ function OpponentProfile() {
           </section>
         )}
       </section>
+
+      {isVideoModalOpen && (
+        <VideoUploadModal
+          onClose={() =>
+            setIsVideoModalOpen(false)
+          }
+          onSave={addOpponentVideo}
+        />
+      )}
     </div>
   );
 }
