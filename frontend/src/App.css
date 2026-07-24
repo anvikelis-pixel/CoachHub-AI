@@ -6681,3 +6681,168 @@ button {
     width: 100%;
   }
 }
+/* ========================================== */
+/*          OPPONENT ACTIONS DROPDOWN         */
+/* ========================================== */
+
+.opponents-actions-cell {
+  position: relative;
+  overflow: visible;
+}
+
+.opponent-actions-menu-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.opponent-actions-trigger {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: #dbe5ec;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid #284b5d;
+  border-radius: 6px;
+  cursor: pointer;
+  place-items: center;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.opponent-actions-trigger:hover,
+.opponent-actions-trigger.active {
+  color: #07130c;
+  background: #b5ef2d;
+  border-color: #b5ef2d;
+}
+
+.opponent-actions-dropdown {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 9px);
+  right: 0;
+  width: 235px;
+  overflow: hidden;
+  padding: 7px;
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgb(181 239 45 / 8%),
+      transparent 35%
+    ),
+    #041520;
+  border: 1px solid #285064;
+  border-radius: 10px;
+  box-shadow:
+    0 22px 60px rgb(0 0 0 / 50%),
+    0 0 0 1px rgb(255 255 255 / 2%);
+}
+
+.opponent-actions-dropdown::before {
+  position: absolute;
+  top: -6px;
+  right: 14px;
+  width: 11px;
+  height: 11px;
+  background: #041520;
+  border-top: 1px solid #285064;
+  border-left: 1px solid #285064;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.opponent-actions-dropdown > button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-items: center;
+  width: 100%;
+  grid-template-columns: 35px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 58px;
+  padding: 9px 10px;
+  color: #d7e1e9;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.opponent-actions-dropdown > button:hover {
+  background: #0a2635;
+}
+
+.opponent-actions-dropdown
+  > button
+  > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  color: #b5ef2d;
+  font-size: 16px;
+  background: rgb(181 239 45 / 7%);
+  border: 1px solid rgb(181 239 45 / 14%);
+  border-radius: 7px;
+  place-items: center;
+}
+
+.opponent-actions-dropdown
+  button
+  strong {
+  display: block;
+  color: inherit;
+  font-size: 11px;
+}
+
+.opponent-actions-dropdown
+  button
+  small {
+  display: block;
+  margin-top: 4px;
+  color: #6f8598;
+  font-size: 9px;
+}
+
+.opponent-actions-divider {
+  height: 1px;
+  margin: 5px 8px;
+  background: #1b3d4f;
+}
+
+.opponent-actions-dropdown
+  > button.danger {
+  color: #ffaaa4;
+}
+
+.opponent-actions-dropdown
+  > button.danger:hover {
+  background: rgb(217 45 32 / 10%);
+}
+
+.opponent-actions-dropdown
+  > button.danger
+  > span {
+  color: #ff928b;
+  background: rgb(217 45 32 / 8%);
+  border-color: rgb(217 45 32 / 20%);
+}
+
+/* Επιτρέπει στο dropdown να βγαίνει έξω από τη γραμμή */
+
+.opponents-table-wrapper,
+.opponents-table-row {
+  overflow: visible;
+}
+
+@media (max-width: 1250px) {
+  .opponents-table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+}
