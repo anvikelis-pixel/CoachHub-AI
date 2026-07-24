@@ -6,6 +6,7 @@ import OpponentTabs from "../components/opponents/OpponentTabs";
 import OpponentVideoSection from "../components/opponents/OpponentVideoSection";
 import TacticalLineup from "../components/opponents/TacticalLineup";
 import VideoUploadModal from "../components/opponents/VideoUploadModal";
+import AiMatchPlanEditor from "../components/opponents/ai/AiMatchPlanEditor";
 
 const fallbackOpponents = [
   {
@@ -647,20 +648,7 @@ function OpponentProfile() {
         )}
 
         {activeTab === "ai" && (
-          <section className="opponent-profile-section opponent-ai-workspace">
-            <p className="section-eyebrow">
-              COACHHUB AI
-            </p>
-
-            <h2>AI Match Plan</h2>
-
-            <p>{opponent.aiSummary}</p>
-
-            <button type="button" disabled>
-              ✦ Δημιουργία αγωνιστικού πλάνου —
-              Σύντομα
-            </button>
-          </section>
+          <AiMatchPlanEditor />
         )}
       </section>
 
