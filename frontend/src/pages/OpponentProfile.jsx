@@ -648,8 +648,11 @@ function OpponentProfile() {
         )}
 
         {activeTab === "ai" && (
-          <AiMatchPlanEditor />
-        )}
+  <AiMatchPlanEditor
+    opponentId={opponent.id}
+    opponentName={opponent.name}
+  />
+)}
       </section>
 
       {isVideoModalOpen && (

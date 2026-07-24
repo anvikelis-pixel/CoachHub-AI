@@ -1,4 +1,8 @@
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const initialPlan = {
   formation: {
@@ -66,8 +70,29 @@ const initialPlan = {
   },
 };
 
-function AiMatchPlanEditor() {
-  const [plan, setPlan] = useState(initialPlan);
+function createInitialState() {
+  return {
+    plan: initialPlan,
+    coachNotes: "",
+    status: "Draft",
+    savedAt: "",
+    publishedAt: "",
+  };
+}
+
+function AiMatchPlanEditor({
+  opponentId,
+  opponentName = "Αντίπαλος",
+}) {
+  const storageKey = useMemo(
+    () =>
+      `coachhub-ai-match-plan-${opponentId}`,
+    [opponentId]
+  );
+
+  const [plan, setPlan] =
+    useState(initialPlan);
+
   const [editingSection, setEditingSection] =
     useState(null);
 
@@ -80,15 +105,122 @@ function AiMatchPlanEditor() {
   const [status, setStatus] =
     useState("Draft");
 
+  const [savedAt, setSavedAt] =
+    useState("");
+
+  const [feedbackMessage, setFeedbackMessage] =
+    useState("");
+
+  useEffect(() => {
+    const emptyState = createInitialState();
+
+    try {
+      const savedPlan =
+        localStorage.getItem(storageKey);
+
+      if (!savedPlan) {
+        setPlan(emptyState.plan);
+        setCoachNotes(emptyState.coachNotes);
+        setStatus(emptyState.status);
+        setSavedAt(emptyState.savedAt);
+        setEditingSection(null);
+        setFeedbackMessage("");
+        return;
+      }
+
+      const parsedPlan = JSON.parse(savedPlan);
+
+      setPlan(
+        parsedPlan.plan &&
+          typeof parsedPlan.plan === "object"
+          ? parsedPlan.plan
+          : emptyState.plan
+      );
+
+      setCoachNotes(
+        typeof parsedPlan.coachNotes === "string"
+          ? parsedPlan.coachNotes
+          : ""
+      );
+
+      setStatus(
+        parsedPlan.status || "Draft"
+      );
+
+      setSavedAt(
+        parsedPlan.publishedAt ||
+          parsedPlan.savedAt ||
+          ""
+      );
+
+      setEditingSection(null);
+      setFeedbackMessage(
+        "Το αποθηκευμένο πλάνο φορτώθηκε."
+      );
+    } catch (error) {
+      console.error(
+        "Αποτυχία φόρτωσης AI Match Plan:",
+        error
+      );
+
+      setPlan(emptyState.plan);
+      setCoachNotes("");
+      setStatus("Draft");
+      setSavedAt("");
+      setFeedbackMessage(
+        "Δεν ήταν δυνατή η φόρτωση του πλάνου."
+      );
+    }
+  }, [storageKey]);
+
   const modifiedSections = useMemo(
     () =>
-      Object.entries(plan).filter(
-        ([, section]) =>
+      Object.values(plan).filter(
+        (section) =>
           section.aiValue !==
           section.coachValue
       ).length,
     [plan]
   );
+
+  const averageConfidence = useMemo(() => {
+    const sections = Object.values(plan);
+
+    if (!sections.length) {
+      return 0;
+    }
+
+    const totalConfidence = sections.reduce(
+      (total, section) =>
+        total +
+        Number(section.confidence || 0),
+      0
+    );
+
+    return Math.round(
+      totalConfidence / sections.length
+    );
+  }, [plan]);
+
+  function formatSavedDate(date) {
+    if (!date) {
+      return "Δεν έχει αποθηκευτεί";
+    }
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Άγνωστη ημερομηνία";
+    }
+
+    return new Intl.DateTimeFormat("el-GR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(parsedDate);
+  }
 
   function updateCoachValue(
     sectionKey,
@@ -101,6 +233,9 @@ function AiMatchPlanEditor() {
         coachValue: value,
       },
     }));
+
+    setStatus("Unsaved changes");
+    setFeedbackMessage("");
   }
 
   function resetSection(sectionKey) {
@@ -114,58 +249,179 @@ function AiMatchPlanEditor() {
     }));
 
     setEditingSection(null);
+    setStatus("Unsaved changes");
+    setFeedbackMessage(
+      "Η ενότητα επανήλθε στην πρόταση AI."
+    );
+  }
+
+  function updatePlanIndex(planStatus, date) {
+    try {
+      const indexKey =
+        "coachhub-ai-match-plans-index";
+
+      const savedIndex =
+        localStorage.getItem(indexKey);
+
+      const parsedIndex = savedIndex
+        ? JSON.parse(savedIndex)
+        : {};
+
+      const safeIndex =
+        parsedIndex &&
+        typeof parsedIndex === "object" &&
+        !Array.isArray(parsedIndex)
+          ? parsedIndex
+          : {};
+
+      const updatedIndex = {
+        ...safeIndex,
+        [String(opponentId)]: {
+          opponentId,
+          opponentName,
+          status: planStatus,
+          updatedAt: date,
+        },
+      };
+
+      localStorage.setItem(
+        indexKey,
+        JSON.stringify(updatedIndex)
+      );
+    } catch (error) {
+      console.error(
+        "Αποτυχία ενημέρωσης AI Plan index:",
+        error
+      );
+    }
   }
 
   function saveDraft() {
+    const currentDate =
+      new Date().toISOString();
+
     const draftData = {
+      opponentId,
+      opponentName,
       plan,
       coachNotes,
       status: "Draft",
-      savedAt: new Date().toISOString(),
+      savedAt: currentDate,
+      publishedAt: "",
     };
 
-    localStorage.setItem(
-      "coachhub-ai-match-plan",
-      JSON.stringify(draftData)
-    );
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify(draftData)
+      );
 
-    setStatus("Draft saved");
+      updatePlanIndex(
+        "Draft",
+        currentDate
+      );
+
+      setStatus("Draft saved");
+      setSavedAt(currentDate);
+      setFeedbackMessage(
+        `Το draft για τον αντίπαλο «${opponentName}» αποθηκεύτηκε.`
+      );
+    } catch (error) {
+      console.error(
+        "Αποτυχία αποθήκευσης draft:",
+        error
+      );
+
+      setFeedbackMessage(
+        "Δεν ήταν δυνατή η αποθήκευση του draft."
+      );
+    }
   }
 
   function publishPlan() {
+    const currentDate =
+      new Date().toISOString();
+
     const publishedData = {
+      opponentId,
+      opponentName,
       plan,
       coachNotes,
       status: "Published",
-      publishedAt:
-        new Date().toISOString(),
+      savedAt: currentDate,
+      publishedAt: currentDate,
     };
 
-    localStorage.setItem(
-      "coachhub-ai-match-plan",
-      JSON.stringify(publishedData)
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify(publishedData)
+      );
+
+      updatePlanIndex(
+        "Published",
+        currentDate
+      );
+
+      setStatus("Published");
+      setSavedAt(currentDate);
+      setFeedbackMessage(
+        `Το πλάνο για τον αντίπαλο «${opponentName}» δημοσιεύτηκε.`
+      );
+    } catch (error) {
+      console.error(
+        "Αποτυχία δημοσίευσης πλάνου:",
+        error
+      );
+
+      setFeedbackMessage(
+        "Δεν ήταν δυνατή η δημοσίευση του πλάνου."
+      );
+    }
+  }
+
+  function resetEntirePlan() {
+    const shouldReset = window.confirm(
+      "Θέλεις να επαναφέρεις ολόκληρο το πλάνο στην αρχική πρόταση AI;"
     );
 
-    setStatus("Published");
+    if (!shouldReset) {
+      return;
+    }
+
+    setPlan(initialPlan);
+    setCoachNotes("");
+    setEditingSection(null);
+    setStatus("Unsaved changes");
+    setFeedbackMessage(
+      "Το πλάνο επανήλθε στην αρχική πρόταση AI."
+    );
   }
 
   return (
     <section className="ai-match-plan-editor">
       <header className="ai-match-plan-header">
         <div>
-          <p>COACHHUB AI / MATCH PLAN</p>
+          <p>
+            COACHHUB AI / MATCH PLAN
+          </p>
 
           <h2>AI Match Plan</h2>
 
           <span>
-            Το AI προτείνει. Ο προπονητής
-            αποφασίζει και προσαρμόζει.
+            Αντίπαλος:{" "}
+            <strong>{opponentName}</strong>
           </span>
         </div>
 
         <div className="ai-plan-status">
           <span>STATUS</span>
+
           <strong>{status}</strong>
+
+          <small className="ai-plan-last-saved">
+            {formatSavedDate(savedAt)}
+          </small>
         </div>
       </header>
 
@@ -200,14 +456,28 @@ function AiMatchPlanEditor() {
           </button>
         </div>
 
-        <div className="ai-plan-modified-count">
-          <span>CHANGES</span>
+        <div className="ai-plan-toolbar-metrics">
+          <div>
+            <span>AI SCORE</span>
+            <strong>
+              {averageConfidence}%
+            </strong>
+          </div>
 
-          <strong>
-            {modifiedSections}
-          </strong>
+          <div className="ai-plan-modified-count">
+            <span>CHANGES</span>
+            <strong>
+              {modifiedSections}
+            </strong>
+          </div>
         </div>
       </div>
+
+      {feedbackMessage && (
+        <div className="ai-plan-feedback">
+          {feedbackMessage}
+        </div>
+      )}
 
       <div className="ai-plan-sections">
         {Object.entries(plan).map(
@@ -254,7 +524,6 @@ function AiMatchPlanEditor() {
 
                 <div className="ai-plan-reason">
                   <span>ΓΙΑΤΙ;</span>
-
                   <p>{section.reason}</p>
                 </div>
 
@@ -262,15 +531,11 @@ function AiMatchPlanEditor() {
                   <div className="ai-plan-comparison">
                     <section>
                       <span>AI VERSION</span>
-
-                      <p>
-                        {section.aiValue}
-                      </p>
+                      <p>{section.aiValue}</p>
                     </section>
 
                     <section>
                       <span>COACH VERSION</span>
-
                       <p>
                         {section.coachValue}
                       </p>
@@ -365,6 +630,7 @@ function AiMatchPlanEditor() {
       <section className="ai-plan-coach-notes">
         <div>
           <p>COACH NOTES</p>
+
           <h3>
             Παρατηρήσεις προπονητή
           </h3>
@@ -374,9 +640,17 @@ function AiMatchPlanEditor() {
           rows="6"
           placeholder="Πρόσθεσε τις τελικές οδηγίες, παρατηρήσεις ή αλλαγές σου..."
           value={coachNotes}
-          onChange={(event) =>
-            setCoachNotes(event.target.value)
-          }
+          onChange={(event) => {
+            setCoachNotes(
+              event.target.value
+            );
+
+            setStatus(
+              "Unsaved changes"
+            );
+
+            setFeedbackMessage("");
+          }}
         />
       </section>
 
@@ -395,6 +669,14 @@ function AiMatchPlanEditor() {
           onClick={publishPlan}
         >
           📤 Δημοσίευση πλάνου
+        </button>
+
+        <button
+          type="button"
+          className="ai-plan-reset-all"
+          onClick={resetEntirePlan}
+        >
+          ↺ Επαναφορά AI
         </button>
 
         <button
